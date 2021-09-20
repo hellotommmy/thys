@@ -1,5 +1,5 @@
 
-theory BitCodedlots
+theory DistinctBy
   imports "Lexer" 
 begin
 
