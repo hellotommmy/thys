@@ -1437,11 +1437,6 @@ lemma flts_qq:
 
 
 
-lemma bsimp_idem:
-  shows "bsimp (bsimp r) = bsimp r"
-  sorry
-
-
 lemma q3a:
   assumes "\<exists>r \<in> set rs. bnullable r"
   shows "bmkeps (AALTs bs (map (fuse bs1) rs)) = bmkeps (AALTs (bs@bs1) rs)"
@@ -1751,11 +1746,6 @@ lemma bders_snoc:
   done
 
 
-lemma QQ1:
-  shows "bsimp (bders (bsimp a) []) = bders_simp (bsimp a) []"
-  apply(simp)
-  apply(simp add: bsimp_idem)
-  done
 
 lemma QQ2:
   shows "bsimp (bders (bsimp a) [c]) = bders_simp (bsimp a) [c]"
@@ -1797,30 +1787,8 @@ lemma iii:
     apply(auto)
   done
 
-lemma CT1_SEQ:
-  shows "bsimp (ASEQ bs a1 a2) = bsimp (ASEQ bs (bsimp a1) (bsimp a2))"
-  apply(simp add: bsimp_idem)
-  done
-
-lemma CT1:
-  shows "bsimp (AALTs bs as) = bsimp (AALTs bs (map  bsimp as))"
-  apply(induct as arbitrary: bs)
-   apply(simp)
-  apply(simp)
-  by (simp add: bsimp_idem comp_def)
-  
-lemma CT1a:
-  shows "bsimp (AALT bs a1 a2) = bsimp(AALT bs (bsimp a1) (bsimp a2))"
-  by (metis CT1 list.simps(8) list.simps(9))
 
 
-lemma CT1b:
-  shows "bsimp (bsimp_AALTs bs as) = bsimp (bsimp_AALTs bs (map bsimp as))"
-  apply(induct bs as rule: bsimp_AALTs.induct)
-    apply(auto simp add: bsimp_idem)
-  apply (simp add: bsimp_fuse bsimp_idem)
-  by (metis bsimp_idem comp_apply)
-  
 
 
 
