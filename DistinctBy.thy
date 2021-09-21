@@ -601,7 +601,7 @@ fun bsimp_AALTs :: "bit list \<Rightarrow> arexp list \<Rightarrow> arexp"
 fun bsimp :: "arexp \<Rightarrow> arexp" 
   where
   "bsimp (ASEQ bs1 r1 r2) = bsimp_ASEQ bs1 (bsimp r1) (bsimp r2)"
-| "bsimp (AALTs bs1 rs) = bsimp_AALTs bs1 (flts (map bsimp rs))"
+| "bsimp (AALTs bs1 rs) = bsimp_AALTs bs1 (distinctBy  (flts (map bsimp rs)) erase {} ) "
 | "bsimp r = r"
 
 
@@ -657,6 +657,13 @@ lemma bsimp_AALTs_size:
   apply(auto simp add: fuse_size)
   done
 
+lemma dB_size: "sum_list (map asize (distinctBy rs erase rset) ) \<le> sum_list (map asize rs)"
+  apply(induction rs arbitrary: rset)
+   apply auto[1]
+  apply simp
+  sledgehammer
+  using trans_le_add2 by blast
+ 
 
 lemma bsimp_size:
   shows "asize (bsimp r) \<le> asize r"
@@ -666,7 +673,9 @@ lemma bsimp_size:
   apply(rule le_trans)
    apply(rule bsimp_AALTs_size)
   apply(simp)
-   apply(rule le_trans)
+  apply(rule le_trans)
+   apply(rule dB_size)
+  apply(rule le_trans)
    apply(rule flts_size)
   by (simp add: sum_list_mono)
 
@@ -718,8 +727,7 @@ lemma bsimp_AALTs_size3:
   apply(rule order_class.order.strict_trans1)
    apply(rule bsimp_AALTs_size)
   apply(simp)
-  by (smt Suc_leI bsimp_asize0 comp_def le_imp_less_Suc le_trans map_eq_conv not_less_eq)
-
+  by (metis (mono_tags, lifting) bsimp_asize0 comp_apply dB_size le_less_trans map_eq_conv not_less_iff_gr_or_eq)
 
 
 
@@ -753,6 +761,16 @@ lemma L_erase_flts:
   using L_erase_AALTs erase_fuse apply auto[1]
   by (simp add: L_erase_AALTs erase_fuse)
 
+lemma L_erase_dB_acc:
+  shows "( \<Union>(L ` acc) \<union> ( \<Union> (L ` erase ` (set (distinctBy rs erase acc) ) ) )) = \<Union>(L ` acc) \<union>  \<Union> (L ` erase ` (set rs))"
+  apply(induction rs arbitrary: acc)
+   apply simp
+  apply simp
+  by (smt (z3) SUP_absorb UN_insert sup_assoc sup_commute)
+
+lemma L_erase_dB:
+  shows " ( \<Union> (L ` erase ` (set (distinctBy rs erase {}) ) ) ) = \<Union> (L ` erase ` (set rs))"
+  by (metis L_erase_dB_acc Un_commute Union_image_empty)
 
 lemma L_bsimp_erase:
   shows "L (erase r) = L (erase (bsimp r))"
@@ -770,6 +788,7 @@ lemma L_bsimp_erase:
    defer
    apply(simp)
   apply(subst (2)L_erase_AALTs)
+  apply(subst L_erase_dB)
   apply(subst L_erase_flts)
   apply(auto)
    apply (simp add: L_erase_AALTs)
@@ -1057,7 +1076,27 @@ lemma nn1bb:
     apply(auto)
    apply (metis nn11a nonalt.simps(1) nonnested.elims(3))
   using n0 by auto
-    
+
+lemma dB_mono:
+  shows "set (distinctBy rs erase acc) \<subseteq> set rs"
+  apply(induction rs arbitrary: acc )
+   apply simp
+  apply auto
+  done
+
+lemma dB_mono1:
+  shows "set (distinctBy rs erase {}) \<subseteq> set rs"
+  by (meson dB_mono)
+
+lemma contraction_prop:
+  shows " \<And>x. \<lbrakk> x \<in> A \<Longrightarrow> P x; B \<subseteq> A \<rbrakk> \<Longrightarrow> x \<in> B \<Longrightarrow> P x "
+  by blast
+
+lemma dB_contraction:
+  shows "  \<And>x. \<lbrakk>x \<in> set rs \<Longrightarrow> P x\<rbrakk> \<Longrightarrow> x \<in> set (distinctBy rs erase {}) \<Longrightarrow> P x"
+  sledgehammer
+  by (meson contraction_prop dB_mono1)
+
 lemma nn1b:
   shows "nonnested (bsimp r)"
   apply(induct r)
@@ -1076,7 +1115,11 @@ lemma nn1b:
       apply(auto)
   apply(rule nn1bb)
   apply(auto)
+  apply(subgoal_tac "x \<in> set (flts (map bsimp x2a))")
+   prefer 2
+   apply (meson dB_contraction)
   by (metis (mono_tags, hide_lams) imageE nn1c set_map)
+
 
 lemma nn1d:
   assumes "bsimp r = AALTs bs rs"
@@ -1175,19 +1218,6 @@ lemma good0:
   apply(auto simp add: good_fuse)
   done
 
-lemma good0a:
-  assumes "flts (map bsimp rs) \<noteq> Nil" "\<forall>r \<in> set (flts (map bsimp rs)). nonalt r"
-  shows "good (bsimp (AALTs bs rs)) \<longleftrightarrow> (\<forall>r \<in> set (flts (map bsimp rs)). good r)"
-  using  assms
-  apply(simp)
-  apply(auto)
-  apply(subst (asm) good0)
-   apply(simp)
-    apply(auto)
-   apply(subst good0)
-   apply(simp)
-    apply(auto)
-  done
 
 lemma flts0:
   assumes "r \<noteq> AZERO" "nonalt r"
@@ -1308,6 +1338,15 @@ lemma good_SEQ:
        apply(simp_all)
   done
 
+lemma dB_keeps_head:
+  shows "rs = a#rs1 \<Longrightarrow> \<exists>rs1'. distinctBy rs erase {} = a#rs1'"
+  apply simp
+  done
+
+lemma dB_non_empty:
+  shows "rs \<noteq> [] \<Longrightarrow> distinctBy rs erase {} \<noteq> []"
+  by (metis dB_keeps_head list.distinct(1) list.exhaust)
+
 lemma good1:
   shows "good (bsimp a) \<or> bsimp a = AZERO"
   apply(induct a taking: asize rule: measure_induct)
@@ -1322,7 +1361,6 @@ lemma good1:
   apply(simp only:)
    apply(case_tac "x52")
     apply(simp)
-  thm good0a
    (*  AALTs list at least one - case *)
    apply(simp only: )
   apply(frule_tac x="a" in spec)
@@ -1347,6 +1385,11 @@ lemma good1:
     apply(rule disjI1)
   apply(simp add: good0)
     apply(subst good0)
+      apply(subgoal_tac "(flts (bsimp a # map bsimp list)) \<noteq> []")
+  prefer 2
+       apply (meson flts3b list.set_intros(1))
+  using dB_non_empty apply blast
+sledgehammer
       apply (metis Nil_is_append_conv flts1 k0)
   apply (metis ex_map_conv list.simps(9) nn1b nn1c)
   apply(simp)

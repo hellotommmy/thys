@@ -273,6 +273,7 @@ lemma retrieve_encode_STARS:
   apply(simp_all)
   done
 
+
 lemma retrieve_fuse2:
   assumes "\<Turnstile> v : (erase r)"
   shows "retrieve (fuse bs r) v = bs @ retrieve r v"
@@ -601,7 +602,7 @@ fun bsimp_AALTs :: "bit list \<Rightarrow> arexp list \<Rightarrow> arexp"
 fun bsimp :: "arexp \<Rightarrow> arexp" 
   where
   "bsimp (ASEQ bs1 r1 r2) = bsimp_ASEQ bs1 (bsimp r1) (bsimp r2)"
-| "bsimp (AALTs bs1 rs) = bsimp_AALTs bs1 (flts (map bsimp rs))"
+| "bsimp (AALTs bs1 rs) = bsimp_AALTs bs1 (distinctBy  (flts (map bsimp rs)) erase {} ) "
 | "bsimp r = r"
 
 
@@ -657,6 +658,13 @@ lemma bsimp_AALTs_size:
   apply(auto simp add: fuse_size)
   done
 
+lemma dB_size: "sum_list (map asize (distinctBy rs erase rset) ) \<le> sum_list (map asize rs)"
+  apply(induction rs arbitrary: rset)
+   apply auto[1]
+  apply simp
+  sledgehammer
+  using trans_le_add2 by blast
+ 
 
 lemma bsimp_size:
   shows "asize (bsimp r) \<le> asize r"
@@ -666,7 +674,9 @@ lemma bsimp_size:
   apply(rule le_trans)
    apply(rule bsimp_AALTs_size)
   apply(simp)
-   apply(rule le_trans)
+  apply(rule le_trans)
+   apply(rule dB_size)
+  apply(rule le_trans)
    apply(rule flts_size)
   by (simp add: sum_list_mono)
 
@@ -718,8 +728,7 @@ lemma bsimp_AALTs_size3:
   apply(rule order_class.order.strict_trans1)
    apply(rule bsimp_AALTs_size)
   apply(simp)
-  by (smt Suc_leI bsimp_asize0 comp_def le_imp_less_Suc le_trans map_eq_conv not_less_eq)
-
+  by (metis (mono_tags, lifting) bsimp_asize0 comp_apply dB_size le_less_trans map_eq_conv not_less_iff_gr_or_eq)
 
 
 
@@ -753,6 +762,16 @@ lemma L_erase_flts:
   using L_erase_AALTs erase_fuse apply auto[1]
   by (simp add: L_erase_AALTs erase_fuse)
 
+lemma L_erase_dB_acc:
+  shows "( \<Union>(L ` acc) \<union> ( \<Union> (L ` erase ` (set (distinctBy rs erase acc) ) ) )) = \<Union>(L ` acc) \<union>  \<Union> (L ` erase ` (set rs))"
+  apply(induction rs arbitrary: acc)
+   apply simp
+  apply simp
+  by (smt (z3) SUP_absorb UN_insert sup_assoc sup_commute)
+
+lemma L_erase_dB:
+  shows " ( \<Union> (L ` erase ` (set (distinctBy rs erase {}) ) ) ) = \<Union> (L ` erase ` (set rs))"
+  by (metis L_erase_dB_acc Un_commute Union_image_empty)
 
 lemma L_bsimp_erase:
   shows "L (erase r) = L (erase (bsimp r))"
@@ -770,6 +789,7 @@ lemma L_bsimp_erase:
    defer
    apply(simp)
   apply(subst (2)L_erase_AALTs)
+  apply(subst L_erase_dB)
   apply(subst L_erase_flts)
   apply(auto)
    apply (simp add: L_erase_AALTs)
@@ -1057,7 +1077,27 @@ lemma nn1bb:
     apply(auto)
    apply (metis nn11a nonalt.simps(1) nonnested.elims(3))
   using n0 by auto
-    
+
+lemma dB_mono:
+  shows "set (distinctBy rs erase acc) \<subseteq> set rs"
+  apply(induction rs arbitrary: acc )
+   apply simp
+  apply auto
+  done
+
+lemma dB_mono1:
+  shows "set (distinctBy rs erase {}) \<subseteq> set rs"
+  by (meson dB_mono)
+
+lemma contraction_prop:
+  shows " \<And>x. \<lbrakk> x \<in> A \<Longrightarrow> P x; B \<subseteq> A \<rbrakk> \<Longrightarrow> x \<in> B \<Longrightarrow> P x "
+  by blast
+
+lemma dB_contraction:
+  shows "  \<And>x. \<lbrakk>x \<in> set rs \<Longrightarrow> P x\<rbrakk> \<Longrightarrow> x \<in> set (distinctBy rs erase {}) \<Longrightarrow> P x"
+  sledgehammer
+  by (meson contraction_prop dB_mono1)
+
 lemma nn1b:
   shows "nonnested (bsimp r)"
   apply(induct r)
@@ -1076,7 +1116,11 @@ lemma nn1b:
       apply(auto)
   apply(rule nn1bb)
   apply(auto)
+  apply(subgoal_tac "x \<in> set (flts (map bsimp x2a))")
+   prefer 2
+   apply (meson dB_contraction)
   by (metis (mono_tags, hide_lams) imageE nn1c set_map)
+
 
 lemma nn1d:
   assumes "bsimp r = AALTs bs rs"
@@ -1102,6 +1146,8 @@ lemma rt:
   apply(subst  k0)
   apply(simp)
   by (smt add_le_cancel_right add_mono bsimp_size flts.simps(1) flts_size k0 le_iff_add list.simps(9) map_append sum_list.Cons sum_list.append trans_le_add1)
+
+
 
 lemma bsimp_AALTs_qq:
   assumes "1 < length rs"
@@ -1175,19 +1221,6 @@ lemma good0:
   apply(auto simp add: good_fuse)
   done
 
-lemma good0a:
-  assumes "flts (map bsimp rs) \<noteq> Nil" "\<forall>r \<in> set (flts (map bsimp rs)). nonalt r"
-  shows "good (bsimp (AALTs bs rs)) \<longleftrightarrow> (\<forall>r \<in> set (flts (map bsimp rs)). good r)"
-  using  assms
-  apply(simp)
-  apply(auto)
-  apply(subst (asm) good0)
-   apply(simp)
-    apply(auto)
-   apply(subst good0)
-   apply(simp)
-    apply(auto)
-  done
 
 lemma flts0:
   assumes "r \<noteq> AZERO" "nonalt r"
@@ -1308,108 +1341,7 @@ lemma good_SEQ:
        apply(simp_all)
   done
 
-lemma good1:
-  shows "good (bsimp a) \<or> bsimp a = AZERO"
-  apply(induct a taking: asize rule: measure_induct)
-  apply(case_tac x)
-  apply(simp)
-  apply(simp)
-  apply(simp)
-  prefer 3
-    apply(simp)
-   prefer 2
-  (*  AALTs case  *)
-  apply(simp only:)
-   apply(case_tac "x52")
-    apply(simp)
-  thm good0a
-   (*  AALTs list at least one - case *)
-   apply(simp only: )
-  apply(frule_tac x="a" in spec)
-   apply(drule mp)
-    apply(simp)
-   (* either first element is good, or AZERO *)
-    apply(erule disjE)
-     prefer 2
-    apply(simp)
-   (* in  the AZERO case, the size  is smaller *)
-   apply(drule_tac x="AALTs x51 list" in spec)
-   apply(drule mp)
-     apply(simp add: asize0)
-    apply(subst (asm) bsimp.simps)
-  apply(subst (asm) bsimp.simps)
-    apply(assumption)
-   (* in the good case *)
-  apply(frule_tac x="AALTs x51 list" in spec)
-   apply(drule mp)
-    apply(simp add: asize0)
-   apply(erule disjE)
-    apply(rule disjI1)
-  apply(simp add: good0)
-    apply(subst good0)
-      apply (metis Nil_is_append_conv flts1 k0)
-  apply (metis ex_map_conv list.simps(9) nn1b nn1c)
-  apply(simp)
-    apply(subst k0)
-    apply(simp)
-    apply(auto)[1]
-  using flts2 apply blast
-    apply(subst  (asm) good0)
-      prefer 3
-      apply(auto)[1]
-     apply auto[1]
-    apply (metis ex_map_conv nn1b nn1c)
-  (* in  the AZERO case *)
-   apply(simp)
-   apply(frule_tac x="a" in spec)
-   apply(drule mp)
-  apply(simp)
-   apply(erule disjE)
-    apply(rule disjI1)
-    apply(subst good0)
-  apply(subst k0)
-  using flts1 apply blast
-     apply(auto)[1]
-  apply (metis (no_types, hide_lams) ex_map_conv list.simps(9) nn1b nn1c)
-    apply(auto)[1]
-  apply(subst (asm) k0)
-  apply(auto)[1]
-  using flts2 apply blast
-  apply(frule_tac x="AALTs x51 list" in spec)
-   apply(drule mp)
-     apply(simp add: asize0)
-    apply(erule disjE)
-     apply(simp)
-    apply(simp)
-  apply (metis add.left_commute flts_nil2 less_add_Suc1 less_imp_Suc_add list.distinct(1) list.set_cases nat.inject)
-   apply(subst (2) k0)
-  apply(simp)
-  (* SEQ case *)
-  apply(simp)
-  apply(case_tac "bsimp x42 = AZERO")
-    apply(simp)
- apply(case_tac "bsimp x43 = AZERO")
-   apply(simp)
-    apply(subst (2) bsimp_ASEQ0)
-  apply(simp)
-  apply(case_tac "\<exists>bs. bsimp x42 = AONE bs")
-    apply(auto)[1]
-   apply(subst bsimp_ASEQ2)
-  using good_fuse apply force
-   apply(subst bsimp_ASEQ1)
-     apply(auto)
-  apply(subst  good_SEQ)
-  apply(simp)
-    apply(simp)
-   apply(simp)
-  using less_add_Suc1 less_add_Suc2 by blast
 
-lemma good1a:
-  assumes "L(erase a) \<noteq> {}"
-  shows "good (bsimp a)"
-  using good1 assms
-  using L_bsimp_erase by force
-  
 
 
 lemma flts_append:
@@ -1459,10 +1391,6 @@ lemma flts_0a:
   using assms
   using flts_0 by blast 
   
-lemma qqq1:
-  shows "AZERO \<notin> set (flts (map bsimp rs))"
-  by (metis ex_map_conv flts3 good.simps(1) good1)
-
 
 fun nonazero :: "arexp \<Rightarrow> bool"
   where
@@ -1531,11 +1459,14 @@ lemma test2:
   shows "bsimp r = r"
   using assms test by auto
 
+lemma bsimp_good:
+  shows "bsimp r = AZERO \<or> good (bsimp r)"
+  sorry
+
 lemma bsimp_idem:
   shows "bsimp (bsimp r) = bsimp r"
-  using test good1
+  using test bsimp_good
   by force
-
 
 lemma q3a:
   assumes "\<exists>r \<in> set rs. bnullable r"
@@ -1772,7 +1703,7 @@ lemma xxx_bder:
 lemma xxx_bder2:
   assumes "L (erase (bsimp r)) = {}"
   shows "bsimp r = AZERO"
-  using assms xxx_bder test2 good1
+  using assms xxx_bder test2 bsimp_good
   by blast
 
 lemma XXX2aa:
@@ -1787,55 +1718,6 @@ lemma XXX2aa_ders:
   using  assms
   by (simp add: test2)
 
-lemma XXX4a:
-  shows "good (bders_simp (bsimp r) s)  \<or> bders_simp (bsimp r) s = AZERO"
-  apply(induct s arbitrary: r rule:  rev_induct)
-   apply(simp)
-  apply (simp add: good1)
-  apply(simp add: bders_simp_append)
-  apply (simp add: good1)
-  done
-
-lemma XXX4a_good:
-  assumes "good a"
-  shows "good (bders_simp a s) \<or> bders_simp a s = AZERO"
-  using assms
-  apply(induct s arbitrary: a rule:  rev_induct)
-   apply(simp)
-  apply(simp add: bders_simp_append)
-  apply (simp add: good1)
-  done
-
-lemma XXX4a_good_cons:
-  assumes "s \<noteq> []"
-  shows "good (bders_simp a s) \<or> bders_simp a s = AZERO"
-  using assms
-  apply(case_tac s)
-   apply(auto)
-  using XXX4a by blast
-
-lemma XXX4b:
-  assumes "good a" "L (erase (bders_simp a s)) \<noteq> {}"
-  shows "good (bders_simp a s)"
-  using assms
-  apply(induct s arbitrary: a)
-   apply(simp)
-  apply(simp)
-  apply(subgoal_tac "L (erase (bder a aa)) = {} \<or> L (erase (bder a aa)) \<noteq> {}")
-   prefer 2
-   apply(auto)[1]
-  apply(erule disjE)
-   apply(subgoal_tac "bsimp (bder a aa) = AZERO")
-    prefer 2
-  using L_bsimp_erase xxx_bder2 apply auto[1]
-   apply(simp)
-  apply (metis L.simps(1) XXX4a erase.simps(1))  
-  apply(drule_tac x="bsimp (bder a aa)" in meta_spec)
-  apply(drule meta_mp)
-  apply simp
-  apply(rule good1a)
-  apply(auto)
-  done
 
 lemma bders_AZERO:
   shows "bders AZERO s = AZERO"
@@ -1886,30 +1768,11 @@ lemma L0aaa:
   using assms
   by (metis bders.simps(1) bders.simps(2) erase_bders lexer_correct_None lexer_correct_Some lexer_flex option.inject)
 
-lemma L0aaaa:
-  assumes "[c] \<in> L (erase a)"
-  shows "[c] \<in> (erase a) \<rightarrow> flex (erase a) id [c] (mkeps (erase (bders a [c])))"
-  using assms
-  using L0aaa by auto
-
-lemma L02_bders:
-  assumes "bnullable (bders a s)"
-  shows "retrieve (bsimp a) (flex (erase (bsimp a)) id s (mkeps (erase (bders (bsimp a) s)))) = 
-         retrieve (bders (bsimp a) s) (mkeps (erase (bders (bsimp a) s)))"
-  using assms
-  by (metis LA L_bsimp_erase bnullable_correctness ders_correctness erase_bders mkeps_nullable nullable_correctness)
 
 
 
 
 
-
-
-lemma L06_bders:
-  assumes "bnullable (bders a s)"
-  shows "bmkeps (bders (bsimp a) s) = bmkeps (bsimp (bders (bsimp a) s))"
-  using assms
-  by (metis L_bsimp_erase bmkeps_simp bnullable_correctness ders_correctness erase_bders nullable_correctness)
 
 lemma LLLL:
   shows "L (erase a) =  L (erase (bsimp a))"
@@ -2180,192 +2043,6 @@ lemma CT1b:
   apply (simp add: bsimp_fuse bsimp_idem)
   by (metis bsimp_idem comp_apply)
   
-lemma conj_rule: "\<lbrakk> P; Q\<rbrakk> \<Longrightarrow> P \<and> (Q \<and> P)"
-  apply(rule conjI)
-   apply assumption
-  apply (rule conjI)
-   apply assumption
-  apply assumption
-  done
-
-  thm disjE
-
-lemma disj_swap : "P \<or> Q \<Longrightarrow> Q \<or> P"
-  apply(erule disjE)
-  oops
-
-lemma "\<lbrakk>\<not>(P \<longrightarrow> Q); \<not>(R \<longrightarrow> Q) \<rbrakk> \<Longrightarrow> R"
-  apply (erule_tac Q = "R \<longrightarrow> Q" in contrapos_np)
-  apply (intro impI)
-  by (erule  notE)
-
-lemma "(P \<or> Q) \<and> R \<Longrightarrow> P \<or> (Q \<and> R)"
-  apply(rule disjCI)
-  oops
-
-
-thm contrapos_np
-
-
-definition bcong
-  where
-"bcong r1 r2 \<equiv> (\<forall> v. 
-                    (
-                      (erase (bsimp r1) = erase (bsimp r2)) \<and>  (retrieve (bsimp r1) v = retrieve (bsimp r2) v)
-                    )  
-                   )"
-
-(*\<Turnstile> v : (erase (bsimp r1)) \<longleftrightarrow> (\<Turnstile> v : erase (bsimp r2))*)
-
-lemma rsrcong: shows "bcong r (bsimp r)"
-  by (simp add: BitCodedlots.bcong_def bsimp_idem)
-
-
-thm simi.induct simi.intros simi.cases
-
-inductive_set even :: "nat set" where
-zero[intro!] : "0 \<in> even" |
-step[intro!]: "n \<in> even \<Longrightarrow> (Suc (Suc n)) \<in> even"
-
-lemma two_times_even[intro!]: "2*k \<in> even"
-  apply(induct_tac k)
-   apply(auto)
-  done
-
-lemma dvd_imp_even: "2 dvd n \<Longrightarrow> n \<in> even"
-  by (auto simp add: dvd_def)
-
-
-lemma even_imp_dvd: "n \<in> even \<Longrightarrow> 2 dvd n"
-  apply (erule even.induct)
-   apply(simp_all add: dvd_def)
-  apply clarify
-  apply (rule_tac x = "Suc k" in exI, simp)
-  done
-
-theorem even_iff_dvd: "(n \<in> even) = (2 dvd n)"
-  by (blast intro: dvd_imp_even even_imp_dvd)
-
-thm even.induct 
-
-lemma even_imp_even_minus_2: "n \<in> even \<Longrightarrow> n - 2 \<in> even"
-  apply (erule even.induct)
-   apply auto
-  done
-
-
-lemma Suc_Suc_even_imp_even:"Suc (Suc n) \<in> even \<Longrightarrow> n \<in> even"
-  apply( ind_cases "Suc (Suc n) \<in> even")
-  apply simp
-  done
-
-lemma [iff]: "((Suc (Suc n)) \<in> even) = (n \<in> even)"
-
-  by(blast dest: Suc_Suc_even_imp_even)
-
-thm even.cases
-
-inductive_cases Suc_Suc_cases [elim!]: "Suc (Suc n) \<in> even"
-
-thm Suc_Suc_cases
-
-inductive_set
-Even ::"nat set" and
-Odd :: "nat set"
-where 
-zero: "0 \<in> Even"
-| EvenI: "n \<in> Odd \<Longrightarrow> Suc n \<in> Even"
-| OddI : "n \<in> Even \<Longrightarrow> Suc n \<in> Odd"
-
-thm Even_Odd.induct
-
-lemma "(m \<in> Even \<longrightarrow> 2 dvd m) \<and> (n \<in> Odd \<longrightarrow> 2 dvd (Suc n))"
-  apply (rule Even_Odd.induct)
-    apply simp
-   apply simp
-  apply(simp_all add: dvd_def)
-  apply clarify
-  apply (rule_tac x = "Suc k" in exI, simp)
-  done
-
-inductive evn :: "nat \<Rightarrow> bool" where
-zero: "evn 0" |
-step: "evn n \<Longrightarrow> evn (Suc (Suc n))"
-
-inductive_set
-rtc :: "('a \<times> 'a) set \<Rightarrow> ('a \<times> 'a) set" ("_*" [1000] 999)
-for r :: "('a \<times> 'a) set" where
-rtc_refl[iff]: "(x,x) \<in> r*"
-| rtc_step: "\<lbrakk> (x,y) \<in> r; (y,z) \<in> r* \<rbrakk> \<Longrightarrow> (x,z) \<in> r*"
-
-lemma [intro]: "(x,y) \<in> r \<Longrightarrow> (x,y) \<in> r*" by(blast intro: rtc_step)
-
-lemma rtc_trans: "\<lbrakk> (x, y) \<in> r*; (y, z) \<in> r*\<rbrakk> \<Longrightarrow> (x, z) \<in> r*"
-  apply (erule rtc.induct)
-  oops
-
-lemma rtc_trans[rule_format]: "(x, y) \<in> r* \<Longrightarrow> (y, z) \<in> r* \<longrightarrow> (x, z) \<in> r*"
-  apply(erule rtc.induct)
-   apply simp
-  by (meson rtc.rtc_step)
-
-inductive_set
-rtc2:: "('a \<times> 'a)set \<Rightarrow> ('a \<times> 'a)set"
-for r :: "('a \<times> 'a)set"
-where
-"(x,y) \<in> r \<Longrightarrow> (x, y) \<in> rtc2 r"
-| "(x,x) \<in> rtc2 r"
-| "\<lbrakk> (x,y) \<in> rtc2 r; (y,z) \<in> rtc2 r\<rbrakk> \<Longrightarrow> (x,z) \<in> rtc2 r"
-thm rtc2.induct
-
-lemma "(x,y) \<in> rtc2 r \<Longrightarrow> (x,y) \<in> r*"
-  apply(erule rtc2.induct)
-  apply blast+
-  apply(blast intro: rtc_trans)
-  done
-
-lemma "(x,y) \<in> r* \<Longrightarrow> (x,y) \<in> rtc2 r"
-  apply(erule rtc.induct)
-   apply(simp add: rtc2.intros)
-  apply(blast intro: rtc2.intros)
-  done
-
-lemma rtc_step_converse: "(x, y) \<in> r* \<Longrightarrow> (y, z) \<in> r \<longrightarrow> (x, z) \<in> r*"
-  apply(erule rtc.induct)
-   apply blast
-  apply(rule impI)
-  apply(drule mp)
-   apply simp
-  apply (simp add: rtc.intros(2))
-  done
-
-datatype 'f gterm = Apply 'f "'f gterm list"
-
-datatype integer_op = Number int | UnaryMinus | Plus
-
-inductive_set
-gterms :: "'f set \<Rightarrow> 'f gterm set"
-for F :: "'f set"
-where
-step[intro!]: "\<lbrakk>\<forall>t \<in> set args. t \<in> gterms F; f \<in> F \<rbrakk>
-              \<Longrightarrow> (Apply f args) \<in> gterms F"
-
-lemma gterms_mono: "F \<subseteq> G \<Longrightarrow> gterms F \<subseteq> gterms G"
-  apply clarify
-
-  apply (erule gterms.induct)
-
-  apply blast
-  done
-
-
-lemma "xs \<noteq> [] \<longrightarrow> hd(rev xs) = last xs"
-  apply(induct_tac xs)
-  apply(auto)
-  done
-
-
-
 
 
 
