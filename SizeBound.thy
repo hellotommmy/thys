@@ -565,6 +565,9 @@ fun distinctBy :: "'a list \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> 'b 
      (if (f x) \<in> acc then distinctBy xs f acc 
       else x # (distinctBy xs f ({f x} \<union> acc)))"
 
+
+
+
 fun flts :: "arexp list \<Rightarrow> arexp list"
   where 
   "flts [] = []"
@@ -662,7 +665,7 @@ lemma dB_size: "sum_list (map asize (distinctBy rs erase rset) ) \<le> sum_list 
   apply(induction rs arbitrary: rset)
    apply auto[1]
   apply simp
-  sledgehammer
+  
   using trans_le_add2 by blast
  
 
@@ -1095,7 +1098,7 @@ lemma contraction_prop:
 
 lemma dB_contraction:
   shows "  \<And>x. \<lbrakk>x \<in> set rs \<Longrightarrow> P x\<rbrakk> \<Longrightarrow> x \<in> set (distinctBy rs erase {}) \<Longrightarrow> P x"
-  sledgehammer
+  
   by (meson contraction_prop dB_mono1)
 
 lemma nn1b:
@@ -1431,42 +1434,13 @@ lemma flts_qq:
   using good.simps(1) k0b apply blast
   apply(auto)[1]  
   done
-  
-lemma test:
-  assumes "good r"
-  shows "bsimp r = r"
-  using assms
-  apply(induct r taking: "asize" rule: measure_induct)
-  apply(erule good.elims)
-  apply(simp_all)
-  apply(subst k0)
-  apply(subst (2) k0)
-                apply(subst flts_qq)
-                  apply(auto)[1]
-                 apply(auto)[1]
-                apply (metis append_Cons append_Nil bsimp_AALTs.simps(3) good.simps(1) k0b)
-               apply force+
-  apply (metis (no_types, lifting) add_Suc add_Suc_right asize.simps(5) bsimp.simps(1) bsimp_ASEQ.simps(19) less_add_Suc1 less_add_Suc2)
-  apply (metis add_Suc add_Suc_right arexp.distinct(5) arexp.distinct(7) asize.simps(4) asize.simps(5) bsimp.simps(1) bsimp.simps(2) bsimp_ASEQ1 good.simps(21) good.simps(8) less_add_Suc1 less_add_Suc2)
-         apply force+
-  apply (metis (no_types, lifting) add_Suc add_Suc_right arexp.distinct(5) arexp.distinct(7) asize.simps(4) asize.simps(5) bsimp.simps(1) bsimp.simps(2) bsimp_ASEQ1 good.simps(25) good.simps(8) less_add_Suc1 less_add_Suc2)
-  apply (metis add_Suc add_Suc_right arexp.distinct(7) asize.simps(4) bsimp.simps(2) bsimp_ASEQ1 good.simps(26) good.simps(8) less_add_Suc1 less_add_Suc2)
-    apply force+
-  done
 
-lemma test2:
-  assumes "good r"
-  shows "bsimp r = r"
-  using assms test by auto
 
-lemma bsimp_good:
-  shows "bsimp r = AZERO \<or> good (bsimp r)"
-  sorry
 
 lemma bsimp_idem:
   shows "bsimp (bsimp r) = bsimp r"
-  using test bsimp_good
-  by force
+  sorry
+
 
 lemma q3a:
   assumes "\<exists>r \<in> set rs. bnullable r"
@@ -1576,44 +1550,7 @@ lemma k1:
   by (smt b3 imageI insert_iff k0 list.set(2) qq3 qs3 bnullable_Hdbmkeps_Hd r1 set_map)
   
   
-  
-lemma bmkeps_simp:
-  assumes "bnullable r"
-  shows "bmkeps r = bmkeps (bsimp r)"
-  using  assms
-  apply(induct r)
-       apply(simp)
-      apply(simp)
-     apply(simp)
-    apply(simp)
-    prefer 3
-  apply(simp)
-   apply(case_tac "bsimp r1 = AZERO")
-    apply(simp)
-    apply(auto)[1]
-  apply (metis L_bsimp_erase L_flat_Prf1 L_flat_Prf2 Prf_elims(1) bnullable_correctness erase.simps(1) mkeps_nullable)
- apply(case_tac "bsimp r2 = AZERO")
-    apply(simp)  
-    apply(auto)[1]
-  apply (metis L_bsimp_erase L_flat_Prf1 L_flat_Prf2 Prf_elims(1) bnullable_correctness erase.simps(1) mkeps_nullable)
-  apply(case_tac "\<exists>bs. bsimp r1 = AONE bs")
-    apply(auto)[1]
-    apply(subst b1)
-    apply(subst b2)
-  apply(simp add: b3[symmetric])
-    apply(simp)
-   apply(subgoal_tac "bsimp_ASEQ x1 (bsimp r1) (bsimp r2) = ASEQ x1 (bsimp r1) (bsimp r2)")
-    prefer 2
-  apply (smt b3 bnullable.elims(2) bsimp_ASEQ.simps(17) bsimp_ASEQ.simps(19) bsimp_ASEQ.simps(20) bsimp_ASEQ.simps(21) bsimp_ASEQ.simps(22) bsimp_ASEQ.simps(24) bsimp_ASEQ.simps(25) bsimp_ASEQ.simps(26) bsimp_ASEQ.simps(27) bsimp_ASEQ.simps(29) bsimp_ASEQ.simps(30) bsimp_ASEQ.simps(31))
-   apply(simp)
-  apply(simp)
-  thm q3
-  apply(subst q3[symmetric])
-   apply simp
-  using b3 qq4 apply auto[1]
-  apply(subst qs3)
-   apply simp
-  using k1 by blast
+
 
 lemma bmkeps_bder_AALTs:
   assumes "\<exists>r \<in> set rs. bnullable (bder c r)" 
@@ -1685,11 +1622,6 @@ lemma XXX2_helper:
   apply(simp)
   done
 
-lemma bmkeps_good:
-  assumes "good a"
-  shows "bmkeps (bsimp a) = bmkeps a"
-  using assms
-  using test2 by auto
 
 
 lemma xxx_bder:
@@ -1699,24 +1631,6 @@ lemma xxx_bder:
   apply(induct r rule: good.induct)
   apply(auto simp add: Sequ_def)
   done
-
-lemma xxx_bder2:
-  assumes "L (erase (bsimp r)) = {}"
-  shows "bsimp r = AZERO"
-  using assms xxx_bder test2 bsimp_good
-  by blast
-
-lemma XXX2aa:
-  assumes "good a"
-  shows "bsimp (bder c (bsimp a)) = bsimp (bder c a)"
-  using  assms
-  by (simp add: test2)
-
-lemma XXX2aa_ders:
-  assumes "good a"
-  shows "bsimp (bders (bsimp a) s) = bsimp (bders a s)"
-  using  assms
-  by (simp add: test2)
 
 
 lemma bders_AZERO:
@@ -1739,23 +1653,6 @@ lemma LA:
   by (simp add: flex_append)
 
 
-
-
-lemma L0:
-  assumes "bnullable a"
-  shows "retrieve (bsimp a) (mkeps (erase (bsimp a))) = retrieve a (mkeps (erase a))"
-  using assms
-  by (metis b3 bmkeps_retrieve bmkeps_simp bnullable_correctness)
-
-thm bmkeps_retrieve
-
-lemma L0a:
-  assumes "s \<in> L(erase a)"
-  shows "retrieve (bsimp (bders a s)) (mkeps (erase (bsimp (bders a s)))) = 
-         retrieve (bders a s) (mkeps (erase (bders a s)))"
-  using assms
-  by (metis L0 bnullable_correctness erase_bders lexer_correct_None lexer_flex)
-  
 lemma L0aa:
   assumes "s \<in> L (erase a)"
   shows "[] \<in> erase (bsimp (bders a s)) \<rightarrow> mkeps (erase (bsimp (bders a s)))"
@@ -1796,20 +1693,6 @@ lemma LX0:
   shows "decode (bmkeps (bders (intern r) s)) r = Some(flex r id s (mkeps (ders s r)))"
   by (metis assms blexer_correctness blexer_def lexer_correct_None lexer_flex)
 
-
-lemma L02_bders2:
-  assumes "bnullable (bders a s)" "s = [c]"
-  shows "retrieve (bders (bsimp a) s) (mkeps (erase (bders (bsimp a) s)))  =
-         retrieve (bders a s) (mkeps (erase (bders a s)))"
-  using assms
-  apply(simp)
-  
-  apply(induct s arbitrary: a)
-   apply(simp)
-  using L0 apply auto[1]
-  oops
-
-thm bmkeps_retrieve bmkeps_simp Posix_mkeps
 
 lemma WQ1:
   assumes "s \<in> L (der c r)"
@@ -1879,66 +1762,6 @@ lemma QQ2:
   apply(simp)
   done
 
-lemma XXX2a_long:
-  assumes "good a"
-  shows "bsimp (bder c (bsimp a)) = bsimp (bder c a)"
-  using  assms
-  apply(induct a arbitrary: c taking: asize rule: measure_induct)
-  apply(case_tac x)
-       apply(simp)
-      apply(simp)
-     apply(simp)
-  prefer 3
-    apply(simp)
-   apply(simp)
-   apply(auto)[1]
-apply(case_tac "x42 = AZERO")
-     apply(simp)
-   apply(case_tac "x43 = AZERO")
-     apply(simp)
-  using test2 apply force  
-  apply(case_tac "\<exists>bs. x42 = AONE bs")
-     apply(clarify)
-     apply(simp)
-    apply(subst bsimp_ASEQ1)
-       apply(simp)
-  using b3 apply force
-  using bsimp_ASEQ0 test2 apply force
-  thm good_SEQ test2
-     apply (simp add: good_SEQ test2)
-    apply (simp add: good_SEQ test2)
-  apply(case_tac "x42 = AZERO")
-     apply(simp)
-   apply(case_tac "x43 = AZERO")
-    apply(simp)
-  apply (simp add: bsimp_ASEQ0)
-  apply(case_tac "\<exists>bs. x42 = AONE bs")
-     apply(clarify)
-     apply(simp)
-    apply(subst bsimp_ASEQ1)
-      apply(simp)
-  using bsimp_ASEQ0 test2 apply force
-     apply (simp add: good_SEQ test2)
-    apply (simp add: good_SEQ test2)
-  apply (simp add: good_SEQ test2)
-  (* AALTs case *)
-  apply(simp)
-  using test2 by fastforce
-
-lemma XXX2a_long_without_good:
-  assumes "a = AALTs bs0  [AALTs bs1 [AALTs bs2 [ASTAR [] (AONE bs7), AONE bs6, ASEQ bs3 (ACHAR bs4 d) (AONE bs5)]]]" 
-  shows "bsimp (bder c (bsimp a)) = bsimp (bder c a)"
-        "bsimp (bder c (bsimp a)) = XXX"
-        "bsimp (bder c a) = YYY"
-  using  assms
-    apply(simp)
-  using  assms
-   apply(simp)
-   prefer 2
-  using  assms
-   apply(simp)
-  oops
-
 lemma bder_bsimp_AALTs:
   shows "bder c (bsimp_AALTs bs rs) = bsimp_AALTs bs (map (bder c) rs)"
   apply(induct bs rs rule: bsimp_AALTs.induct)  
@@ -1956,47 +1779,6 @@ lemma flts_nothing:
         apply(auto)
   done
 
-lemma flts_flts:
-  assumes "\<forall>r \<in> set rs. good r"
-  shows "flts (flts rs) = flts rs"
-  using assms
-  apply(induct rs taking: "\<lambda>rs. sum_list  (map asize rs)" rule: measure_induct)
-  apply(case_tac x)
-   apply(simp)
-  apply(simp)
-  apply(case_tac a)
-       apply(simp_all  add: bder_fuse flts_append)
-  apply(subgoal_tac "\<forall>r \<in> set x52. r \<noteq> AZERO")
-   prefer 2
-  apply (metis Nil_is_append_conv bsimp_AALTs.elims good.simps(1) good.simps(5) good0 list.distinct(1) n0 nn1b split_list_last test2)
-  apply(subgoal_tac "\<forall>r \<in> set x52. nonalt r")
-   prefer 2
-   apply (metis n0 nn1b test2)
-  by (metis flts_fuse flts_nothing)
-
-
-lemma PP:
-  assumes "bnullable (bders r s)" 
-  shows "bmkeps (bders (bsimp r) s) = bmkeps (bders r s)"
-  using assms
-  apply(induct s arbitrary: r)
-   apply(simp)
-  using bmkeps_simp apply auto[1]
-  apply(simp add: bders_append bders_simp_append)
-  oops
-
-lemma PP:
-  assumes "bnullable (bders r s)"
-  shows "bmkeps (bders_simp (bsimp r) s) = bmkeps (bders r s)"
-  using assms
-  apply(induct s arbitrary: r rule: rev_induct)
-   apply(simp)
-  using bmkeps_simp apply auto[1]
-  apply(simp add: bders_append bders_simp_append)
-  apply(drule_tac x="bder a (bsimp r)" in meta_spec)
-  apply(drule_tac meta_mp)
-   defer
-  oops
 
 
 lemma
@@ -2031,10 +1813,6 @@ lemma CT1a:
   shows "bsimp (AALT bs a1 a2) = bsimp(AALT bs (bsimp a1) (bsimp a2))"
   by (metis CT1 list.simps(8) list.simps(9))
 
-lemma WWW2:
-  shows "bsimp (bsimp_AALTs bs1 (flts (map bsimp as1))) =
-         bsimp_AALTs bs1 (flts (map bsimp as1))"
-  by (metis bsimp.simps(2) bsimp_idem)
 
 lemma CT1b:
   shows "bsimp (bsimp_AALTs bs as) = bsimp (bsimp_AALTs bs (map bsimp as))"
@@ -2046,30 +1824,6 @@ lemma CT1b:
 
 
 
-
-
-
-
-
-
-fun
- zeroable :: "rexp \<Rightarrow> bool"
-where
-  "zeroable (ZERO) = True"
-| "zeroable (ONE) = False"
-| "zeroable (CR c) = False"
-| "zeroable (ALT r1 r2) = (zeroable r1 \<or> zeroable r2)"
-| "zeroable (SEQ r1 r2) = (zeroable r1 \<or> zeroable r2)"
-| "zeroable (STAR r) = zeroable r"
-
-fun nzero :: "rexp \<Rightarrow> bool"
-  where
-  "nzero ZERO = False"
-| "nzero ONE = True"
-| "nzero (CR c) = True"
-| "nzero (ALT r1 r2) = (nzero r1 \<and> nzero r2)"
-| "nzero (SEQ r1 r2) = (nzero r1 \<and> nzero r2)"
-| "nzero (STAR r1) = nzero r1"
 
 inductive rrewrite:: "arexp \<Rightarrow> arexp \<Rightarrow> bool" ("_ \<leadsto> _" [99, 99] 99)
   where
@@ -2089,14 +1843,8 @@ as long as they are on the right path*)
 | "AALTs (bs@bs1) rs \<leadsto> AALTs bs (map (fuse bs1) rs)"
 | "AALTs bs [] \<leadsto> AZERO"
 | "AALTs bs [r] \<leadsto> fuse bs r"
+| "erase a1 = erase a2 \<Longrightarrow> AALTs bs (rsa@[a1]@rsb@[a2]@rsc) \<leadsto> AALTs bs (rsa@[a1]@rsb@rsc)"
 
-
-
-(*this rule is not powerful enough | "\<lbrakk>r \<leadsto> r'; AALTs bs rs \<leadsto> AALTs bs rs'\<rbrakk> \<Longrightarrow> AALTs bs (r#rs) \<leadsto> AALTs bs (r'#rs')"*)
-(*
-| "\<lbrakk>r1 \<leadsto> r2; r3 \<leadsto> r4\<rbrakk> \<Longrightarrow> ASEQ bs r1 r3 \<leadsto> ASEQ bs r2 r4"
-(r + 1.0 + r2) \<rightarrow> r + 0 + r2
-*)
 
 inductive rrewrites:: "arexp \<Rightarrow> arexp \<Rightarrow> bool" ("_ \<leadsto>* _" [100, 100] 100)
   where 
@@ -2172,14 +1920,6 @@ lemma srewrites_alt: "rs1 s\<leadsto>* rs2 \<Longrightarrow> (AALTs bs (rs@rs1))
 
 corollary srewrites_alt1: "rs1 s\<leadsto>* rs2 \<Longrightarrow> AALTs bs rs1 \<leadsto>* AALTs bs rs2"
   by (metis append.left_neutral srewrites_alt)
-
-
-lemma contextchunk: "AALTs bs rs2 \<leadsto>* AALTs bs rs2' \<Longrightarrow> AALTs bs (rs1@rs2) \<leadsto>* AALTs bs (rs1@rs2')"
-
-  apply(induct "AALTs bs rs2" "AALTs bs rs2'"  arbitrary: bs rs1 rule: rrewrites.induct)
-   apply(simp)
-
-  oops
 
 
 lemma star_seq:  "r1 \<leadsto>* r2 \<Longrightarrow> ASEQ bs r1 r3 \<leadsto>* ASEQ bs r2 r3"
@@ -2325,7 +2065,164 @@ lemma fltsrewrites: "  AALTs bs1 rs \<leadsto>* AALTs bs1 (flts rs)"
   apply (meson fltsfrewrites fs4 nonalt.elims(3) nonazero.elims(3))
   by (metis append_Cons append_Nil fltsfrewrites frewritesaalts k00 k0a)
 
+lemma alts_simpalts: "\<And>bs1 rs. (\<And>x. x \<in> set rs \<Longrightarrow> x \<leadsto>* bsimp x) \<Longrightarrow> 
+AALTs bs1 rs \<leadsto>* AALTs bs1 (map bsimp rs)"
+  apply(subgoal_tac " rs s\<leadsto>*  (map bsimp rs)")
+   prefer 2
+  using trivialbsimpsrewrites apply auto[1]
+  using srewrites_alt1 by auto
 
+lemma alts_fltsalts: "\<And>bs1 rs. (\<And>x. x \<in> set rs \<Longrightarrow> x \<leadsto>* bsimp x) \<Longrightarrow> 
+AALTs bs1 rs \<leadsto>* AALTs bs1 (flts (map bsimp rs))"
+  by (meson alts_simpalts fltsrewrites real_trans)
+
+lemma threelistsappend: "rsa@a#rsb = (rsa@[a])@rsb"
+  apply auto
+  done
+
+fun distinctByAcc :: "'a list \<Rightarrow> ('a \<Rightarrow> 'b) \<Rightarrow> 'b set \<Rightarrow> 'b set"
+  where
+  "distinctByAcc [] f acc = acc"
+| "distinctByAcc (x#xs) f acc = 
+     (if (f x) \<in> acc then distinctByAcc xs f acc 
+      else  (distinctByAcc xs f ({f x} \<union> acc)))"
+
+(*distinctby is only going to add to the set acc*)
+lemma dB_accmono: "distinctByAcc (a#rs) erase acc = distinctByAcc [] erase acc' \<Longrightarrow> acc \<subseteq> acc'"
+  apply(induction rs arbitrary: acc acc')
+  apply simp
+   apply (simp add: subset_insertI)
+  apply simp
+  apply(case_tac "erase a \<in> acc")
+  apply simp
+   apply (smt (z3) insert_iff insert_is_Un insert_subset)
+  apply simp
+  by (smt (z3) insert_is_Un insert_subset sup_ge2)
+
+lemma dB_acchas_elema: "erase a \<in> distinctByAcc (rsa@[a]@rsb) erase acc"
+  apply(induction rsa arbitrary: rsb acc)
+  apply(case_tac "erase a \<in> acc")
+  apply simp
+  
+  apply (metis dB_accmono distinctByAcc.simps(1) distinctByAcc.simps(2) in_mono)
+  
+  apply (metis Un_insert_left append_Cons append_Nil dB_accmono distinctByAcc.simps(1) distinctByAcc.simps(2) insertI1 insert_subset)
+  by simp
+
+lemma dB_accequiv1: "distinctByAcc ((rs @ [a]) @ rsa) erase (insert (erase a) acc) = distinctByAcc ((rs @ [a]) @ rsa) erase acc"
+
+  apply(induction rs arbitrary: rsa acc)
+  apply (metis append_eq_Cons_conv distinctByAcc.simps(2) insertI1 insert_absorb insert_is_Un threelistsappend)
+  by auto
+
+lemma dB_accmono1: "  distinctByAcc rsa erase acc \<subseteq> distinctByAcc (rs@rsa) erase acc"
+  apply(induction rsa arbitrary: rs acc)
+  
+   apply (metis dB_accmono distinctByAcc.simps(1) list.exhaust order_refl)
+  apply(case_tac "erase a \<in> acc")
+  apply simp
+
+   apply (metis threelistsappend)
+  apply simp
+  apply(drule_tac x = "rs@[a]" in meta_spec)
+  apply(drule_tac x = "insert (erase a) acc" in meta_spec)
+  apply(subgoal_tac " distinctByAcc ((rs @ [a]) @ rsa) erase (insert (erase a) acc) \<subseteq> distinctByAcc (rs @ a # rsa) erase acc  ")
+  apply blast
+  using dB_accequiv1 by auto
+
+
+
+lemma dB_eats_dupend : "erase a \<in> acc \<union> set (map erase rsa) \<Longrightarrow> distinctBy (rsa @ [a]) erase acc =  distinctBy rsa erase acc"
+  apply(induction rsa arbitrary: acc)
+   apply simp
+  by force
+
+lemma dB_keepsnew : " erase a \<notin> acc \<union> (erase `set rsa) \<Longrightarrow>  distinctBy (rsa @ [a]) erase acc = distinctBy rsa erase acc @ [a]"
+  apply(induction rsa arbitrary: acc)
+   apply simp
+  apply simp
+  done
+
+
+lemma dB_compositionality: 
+  shows "distinctBy (rsa@rsb) erase acc =(distinctBy rsa erase acc) @ (distinctBy rsb erase (acc \<union> set( map erase rsa)))"
+  apply(induction rsb arbitrary: rsa acc)
+   apply force
+  apply(drule_tac x = "rsa@[a]" in meta_spec)
+  apply(subst threelistsappend)
+  apply(subgoal_tac " distinctBy (rsa @ [a]) erase acc @ distinctBy rsb erase (acc \<union> set (map erase (rsa @ [a]))) =
+distinctBy rsa erase acc @ distinctBy (a # rsb) erase (acc \<union> set (map erase rsa))")
+   apply presburger
+  apply(case_tac "erase a \<in> acc \<union> set (map erase rsa)")
+  apply simp
+  apply simp
+   apply (simp add: dB_eats_dupend insert_absorb)
+  apply simp
+  by (meson UnE dB_keepsnew)
+
+lemma dB_single_step: "distinctBy (a#rs) f {} = a # distinctBy rs f {f a}"
+  apply simp
+  done
+
+lemma somewhereInside: "r \<in> set rs \<Longrightarrow> \<exists>rs1 rs2. rs = rs1@[r]@rs2"
+  using split_list by fastforce
+
+lemma somewhereMapInside: "f r \<in> f ` set rs \<Longrightarrow> \<exists>rs1 rs2 a. rs = rs1@[a]@rs2 \<and> f a = f r"
+  apply auto
+  by (metis split_list)
+
+lemma alts_dBrewrites_withFront: " AALTs bs (rsa @ rs) \<leadsto>* AALTs bs (rsa @ distinctBy rs erase (erase ` set rsa))"
+  apply(induction rs arbitrary: rsa)
+   apply simp
+  apply(drule_tac x = "rsa@[a]" in meta_spec)
+  apply(subst threelistsappend)
+  apply(rule real_trans)
+  apply simp
+  apply(case_tac "a \<in> set rsa")
+   apply simp
+   apply(drule somewhereInside)
+   apply(erule exE)+
+   apply simp
+  apply(subgoal_tac " AALTs bs
+            (rs1 @
+             a #
+             rs2 @
+             a #
+             distinctBy rs erase
+              (insert (erase a)
+                (erase `
+                 (set rs1 \<union> set rs2)))) \<leadsto> AALTs bs (rs1@ a # rs2 @  distinctBy rs erase
+              (insert (erase a)
+                (erase `
+                 (set rs1 \<union> set rs2)))) ")
+  prefer 2
+  using rrewrite.intros(13) apply force
+  using r_in_rstar apply force
+  apply(subgoal_tac "erase ` set (rsa @ [a]) = insert (erase a) (erase ` set rsa)")
+  prefer 2
+    
+   apply auto[1]
+  apply(case_tac "erase a \<in> erase `set rsa")
+
+   apply simp
+  apply(subgoal_tac "AALTs bs (rsa @ a # distinctBy rs erase (insert (erase a) (erase ` set rsa))) \<leadsto>
+                     AALTs bs (rsa @ distinctBy rs erase (insert (erase a) (erase ` set rsa)))")
+  apply force
+  apply (smt (verit, ccfv_threshold) append_Cons append_assoc append_self_conv2 r_in_rstar rrewrite.intros(13) same_append_eq somewhereMapInside)
+  by force
+
+ 
+
+lemma alts_dBrewrites: "AALTs bs rs \<leadsto>* AALTs bs (distinctBy rs erase {})"
+  apply(induction rs)
+   apply simp
+  apply simp
+  using alts_dBrewrites_withFront
+  by (metis append_Nil dB_single_step empty_set image_empty)
+
+
+
+  
 
 
 lemma bsimp_rewrite: " (rrewrites r ( bsimp r))"
@@ -2347,17 +2244,24 @@ lemma bsimp_rewrite: " (rrewrites r ( bsimp r))"
   apply simp
 
   apply auto
+
+
   apply(subgoal_tac "AALTs bs1 rs \<leadsto>* AALTs bs1 (map bsimp rs)")
-  apply(subgoal_tac "AALTs bs1 (map bsimp rs) \<leadsto>* AALTs bs1 (flts (map bsimp rs))")
-    apply(subgoal_tac "AALTs bs1 (flts (map bsimp rs)) \<leadsto>* bsimp_AALTs bs1 (flts (map bsimp rs))")
-     apply(rule real_trans)
-  prefer 2
-      apply(assumption)
-  using real_trans apply blast
-  prefer 3
-    apply (simp add: srewrites_alt1 trivialbsimpsrewrites)
-  using bsimp_AALTsrewrites apply blast
-  by (simp add: fltsrewrites)
+   apply(subgoal_tac "AALTs bs1 (map bsimp rs) \<leadsto>* AALTs bs1 (flts (map bsimp rs))")
+  apply(subgoal_tac "AALTs bs1 (flts (map bsimp rs)) \<leadsto>* AALTs bs1 (distinctBy (flts (map bsimp rs)) erase {})")
+    apply(subgoal_tac "AALTs bs1 (distinctBy (flts (map bsimp rs)) erase {}) \<leadsto>* bsimp_AALTs bs1 (distinctBy (flts (map bsimp rs)) erase {} )")
+
+  
+      apply (meson real_trans)
+
+   apply (meson bsimp_AALTsrewrites)
+
+  apply (meson alts_dBrewrites)
+
+  using fltsrewrites apply auto[1]
+
+  using alts_simpalts by force
+
 
 lemma rewritenullable: "\<lbrakk>r1 \<leadsto> r2; bnullable r1 \<rbrakk> \<Longrightarrow> bnullable r2"
   apply(induction r1 r2 rule: rrewrite.induct)
@@ -2370,8 +2274,12 @@ lemma rewritenullable: "\<lbrakk>r1 \<leadsto> r2; bnullable r1 \<rbrakk> \<Long
       apply auto[4]
      apply (metis UnCI bnullable_correctness erase_fuse imageI)
     apply (metis bnullable_correctness erase_fuse)
-   apply (metis bnullable_correctness erase_fuse)
-  by (metis bnullable_correctness erase.simps(5) erase_fuse)
+    apply (metis bnullable_correctness erase_fuse)
+  
+   apply (metis bnullable_correctness erase.simps(5) erase_fuse)
+  
+
+  by (smt (z3) Un_iff bnullable_correctness insert_iff list.set(2) qq3 set_append)
 
 lemma rewrite_non_nullable: "\<lbrakk>r1 \<leadsto> r2; \<not>bnullable r1 \<rbrakk> \<Longrightarrow> \<not>bnullable r2"
   apply(induction r1 r2 rule: rrewrite.induct)
@@ -2439,8 +2347,11 @@ lemma rrewrite_nbnullable: "\<lbrakk> r1 \<leadsto> r2 ; \<not> bnullable r1 \<r
     apply auto[1]
     apply (metis bnullable_correctness erase_fuse)
    apply auto[1]
-  apply auto[1]
-  by (metis bnullable_correctness erase_fuse)
+   apply auto[1]
+
+  apply (metis bnullable_correctness erase_fuse)
+
+  by (meson rewrite_non_nullable rrewrite.intros(13))
 
 lemma spillbmkepssame: "\<lbrakk>bnullable (AALTs bs1 rs1)\<rbrakk> \<Longrightarrow> bmkeps (AALTs bs [AALTs bs1 rs1]) = bmkeps (AALTs bs (map (fuse bs1) rs1))"
 
@@ -2539,8 +2450,9 @@ lemma rewrite_bmkeps: "\<lbrakk> r1 \<leadsto> r2; (bnullable r1)\<rbrakk> \<Lon
 
   using bnullable.simps(1) apply blast
 
-  by (simp add: b2)
+  apply (simp add: b2)
  
+  by (smt (z3) Un_iff bnullable_correctness erase.simps(5) qq1 qq2 qq3 set_append)
 
 
 
@@ -2600,8 +2512,9 @@ lemma rewrite_fuse: " r2 \<leadsto> r3 \<Longrightarrow> fuse bs r2 \<leadsto>* 
 
   apply (simp add: r_in_rstar rrewrite.intros(11))
 
-  by (metis fuse_append r_in_rstar rrewrite.intros(12))
+  apply (metis fuse_append r_in_rstar rrewrite.intros(12))
 
+  using rrewrite.intros(13) by auto
 
   
 
@@ -2647,12 +2560,25 @@ lemma rewrite_der_altmiddle: "bder c (AALTs bs (rsa @ AALTs bs1 rs1 # rsb)) \<le
 
   by fastforce
 
+lemma erase_same_der_same:
+  shows "erase a1 = erase a2 \<Longrightarrow> erase (bder c a1) = erase (bder c a2)"
+  by simp
+
+lemma lock_step_der_removal: 
+  shows " erase a1 = erase a2 \<Longrightarrow> 
+                                  bder c (AALTs bs (rsa @ [a1] @ rsb @ [a2] @ rsc)) \<leadsto>* 
+                                  bder c (AALTs bs (rsa @ [a1] @ rsb @ rsc))"
+  apply(simp)
+  
+  using rrewrite.intros(13) by auto
+
 lemma rewrite_after_der: "r1 \<leadsto> r2 \<Longrightarrow> (bder c r1) \<leadsto>* (bder c r2)"
   apply(induction r1 r2 arbitrary: c rule: rrewrite.induct)
   
-             apply (simp add: r_in_rstar rrewrite.intros(1))
-
-          apply (metis L.simps(1) L_bsimp_erase bder.simps(1) bsimp.simps(1) bsimp_ASEQ0 bsimp_rewrite der_correctness erase.simps(1) erase_bder xxx_bder2)
+              apply (simp add: r_in_rstar rrewrite.intros(1))
+  apply simp
+  
+  apply (meson contextrewrites1 r_in_rstar rrewrite.intros(11) rrewrite.intros(2) rrewrite0away rs2)
            apply(simp)
            apply(rule many_steps_later)
             apply(rule to_zero_in_alt)
@@ -2700,8 +2626,11 @@ lemma rewrite_after_der: "r1 \<leadsto> r2 \<Longrightarrow> (bder c r1) \<leads
 
   apply (simp add: r_in_rstar rrewrite.intros(11))
 
-  by (metis bder.simps(4) bder_bsimp_AALTs bsimp_AALTs.simps(2) bsimp_AALTsrewrites)
+   apply (metis bder.simps(4) bder_bsimp_AALTs bsimp_AALTs.simps(2) bsimp_AALTsrewrites)
+
   
+  using lock_step_der_removal by auto
+
 
 
 lemma rewrites_after_der: "  r1 \<leadsto>* r2  \<Longrightarrow>  (bder c r1) \<leadsto>* (bder c r2)"
