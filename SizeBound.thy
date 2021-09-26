@@ -1635,31 +1635,6 @@ lemma bders_AZERO:
      apply(auto)
   done
 
-lemma LA:
-  assumes "\<Turnstile> v : ders s (erase r)"
-  shows "retrieve (bders r s) v = retrieve r (flex (erase r) id s v)"
-  using assms
-  apply(induct s arbitrary: r v rule: rev_induct)
-   apply(simp)
-  apply(simp add: bders_append ders_append)
-  apply(subst bder_retrieve)
-   apply(simp)
-  apply(drule Prf_injval)
-  by (simp add: flex_append)
-
-
-lemma L0aa:
-  assumes "s \<in> L (erase a)"
-  shows "[] \<in> erase (bsimp (bders a s)) \<rightarrow> mkeps (erase (bsimp (bders a s)))"
-  using assms
-  by (metis Posix_mkeps b3 bnullable_correctness erase_bders lexer_correct_None lexer_flex)
-
-lemma L0aaa:
-  assumes "[c] \<in> L (erase a)"
-  shows "[c] \<in> (erase a) \<rightarrow> flex (erase a) id [c] (mkeps (erase (bder c a)))"
-  using assms
-  by (metis bders.simps(1) bders.simps(2) erase_bders lexer_correct_None lexer_correct_Some lexer_flex option.inject)
-
 
 
 
@@ -1677,16 +1652,6 @@ lemma LLLL:
     
 
 
-lemma L07XX:
-  assumes "s \<in> L (erase a)"
-  shows "s \<in> erase a \<rightarrow> flex (erase a) id s (mkeps (ders s (erase a)))"
-  using assms
-  by (meson lexer_correct_None lexer_correctness(1) lexer_flex)
-
-lemma LX0:
-  assumes "s \<in> L r"
-  shows "decode (bmkeps (bders (intern r) s)) r = Some(flex r id s (mkeps (ders s r)))"
-  by (metis assms blexer_correctness blexer_def lexer_correct_None lexer_flex)
 
 
 lemma WQ1:
@@ -1701,44 +1666,6 @@ lemma L1:
   using assms
   by (metis blexer_correctness blexer_def lexer_correctness(1) option.distinct(1))
 
-lemma L2:
-  assumes "s \<in> (der c r) \<rightarrow> v" 
-  shows "decode (bmkeps (bders (intern r) (c # s))) r = Some (injval r c v)"
-  using assms
-  apply(subst bmkeps_retrieve)
-  using Posix1(1) lexer_correct_None lexer_flex apply fastforce
-  using MAIN_decode
-  apply(subst MAIN_decode[symmetric])
-   apply(simp)
-   apply (meson Posix1(1) lexer_correct_None lexer_flex mkeps_nullable)
-  apply(simp)
-  apply(subgoal_tac "v = flex (der c r) id s (mkeps (ders s (der c r)))")
-   prefer 2
-   apply (metis Posix_determ lexer_correctness(1) lexer_flex option.distinct(1))
-  apply(simp)
-  apply(subgoal_tac "injval r c (flex (der c r) id s (mkeps (ders s (der c r)))) =
-    (flex (der c r) ((\<lambda>v. injval r c v) o id) s (mkeps (ders s (der c r))))")
-   apply(simp)
-  using flex_fun_apply by blast
-  
-lemma L3:
-  assumes "s2 \<in> (ders s1 r) \<rightarrow> v" 
-  shows "decode (bmkeps (bders (intern r) (s1 @ s2))) r = Some (flex r id s1 v)"
-  using assms
-  apply(induct s1 arbitrary: r s2 v rule: rev_induct)
-   apply(simp)
-  using L1 apply blast
-  apply(simp add: ders_append)
-  apply(drule_tac x="r" in meta_spec)
-  apply(drule_tac x="x # s2" in meta_spec)
-  apply(drule_tac x="injval (ders xs r) x v" in meta_spec)
-  apply(drule meta_mp)
-   defer
-   apply(simp)
-   apply(simp add:  flex_append)
-  by (simp add: Posix_injval)
-
-
 
 lemma bders_snoc:
   "bder c (bders a s) = bders a (s @ [c])"
@@ -1746,11 +1673,6 @@ lemma bders_snoc:
   done
 
 
-
-lemma QQ2:
-  shows "bsimp (bders (bsimp a) [c]) = bders_simp (bsimp a) [c]"
-  apply(simp)
-  done
 
 lemma bder_bsimp_AALTs:
   shows "bder c (bsimp_AALTs bs rs) = bsimp_AALTs bs (map (bder c) rs)"
@@ -2631,7 +2553,6 @@ lemma main_main: "blexer r s = blexer_simp r s"
   by (simp add: b4 blexer_def blexer_simp_def quasi_main)
 
 
-
-
+unused_thms
 
 end
